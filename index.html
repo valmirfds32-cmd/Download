@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Remédios</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f8f9fa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #codigo { 
+            background: #e9ecef; 
+            font-weight: bold;
+        }
+        .botoes {
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+            margin: 20px 0;
+        }
+        button { 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .btn-adicionar { background: #28a745; color: white; }
+        .btn-apagar { background: #dc3545; color: white; flex: 1; }
+        .btn-navegar { background: #007bff; color: white; min-width: 120px; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        #status {
+            padding: 10px; 
+            margin: 20px 0; 
+            border-radius: 4px; 
+            text-align: center;
+            font-weight: bold;
+        }
+        .status-vazio { background: #fff3cd; color: #856404; }
+        .status-ok { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>📋 Cadastro de Remédios</h1>
+    <p><em>Preencha e Adicione. Use botões para navegar e apagar o atual.</em></p>
+
+    <div class="form-group">
+        <label>Código do Produto:</label>
+        <input type="number" id="codigo" readonly>
+    </div>
+
+    <div class="form-group">
+        <label>Nome do Produto <small>(Chave única)</small>:</label>
+        <input type="text" id="nome_produto" required>
+    </div>
+
+    <div class="form-group">
+        <label>Fórmula:</label>
+        <input type="text" id="formula">
+    </div>
+
+    <div class="form-group">
+        <label>MG:</label>
+        <input type="number" id="mg">
+    </div>
+
+    <div class="form-group">
+        <label>Observações Importantes:</label>
+        <textarea id="observacoes" rows="4"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Valor em Reais (R$):</label>
+        <input type="number" step="0.01" id="valor" min="0">
+    </div>
+
+    <div class="botoes">
+        <button class="btn-adicionar" onclick="adicionarRemedio()">➕ Adicionar</button>
+        <button class="btn-apagar" id="btnApagar" onclick="apagarRemedio()" disabled>🗑️ Apagar Atual</button>
+        <button class="btn-navegar" onclick="recuarRemedio()">⬅️ Recuar</button>
+        <button class="btn-navegar" onclick="avancarRemedio()">Avançar ➡️</button>
+    </div>
+
+    <div id="status" class="status-vazio">Nenhum remédio cadastrado</div>
+
+    <script>
+        let remedios = JSON.parse(localStorage.getItem('cadastro_remedios')) || [];
+        let indiceAtual = -1;
+
+        function atualizarStatus() {
+            const status = document.getElementById('status');
+            const btnApagar = document.getElementById('btnApagar');
+            
+            if (remedios.length === 0) {
+                status.textContent = 'Nenhum remédio cadastrado';
+                status.className = 'status-vazio';
+                btnApagar.disabled = true;
+                limparCampos();
+                return;
+            }
+            
+            status.textContent = `Registro ${indiceAtual + 1} de ${remedios.length}`;
+            status.className = 'status-ok';
+            btnApagar.disabled = false;
+        }
+
+        function limparCampos() {
+            document.getElementById('codigo').value = '';
+            document.getElementById('nome_produto').value = '';
+            document.getElementById('formula').value = '';
+            document.getElementById('mg').value = '';
+            document.getElementById('observacoes').value = '';
+            document.getElementById('valor').value = '';
+        }
+
+        function carregarRegistro(index) {
+            if (index < 0 || index >= remedios.length) return;
+            
+            const r = remedios[index];
+            document.getElementById('codigo').value = r.codigo;
+            document.getElementById('nome_produto').value = r.nome_produto;
+            document.getElementById('formula').value = r.formula || '';
+            document.getElementById('mg').value = r.mg || '';
+            document.getElementById('observacoes').value = r.observacoes || '';
+            document.getElementById('valor').value = r.valor || 0;
+        }
+
+        function salvarDados() {
+            localStorage.setItem('cadastro_remedios', JSON.stringify(remedios));
+            atualizarStatus();
+        }
+
+        function adicionarRemedio() {
+            const nome = document.getElementById('nome_produto').value.trim();
+            if (!nome) {
+                alert('Nome do produto é obrigatório!');
+                return;
+            }
+
+            if (remedios.some(r => r.nome_produto.toLowerCase() === nome.toLowerCase())) {
+                alert('Nome do produto já existe!');
+                return;
+            }
+
+            const novoCodigo = remedios.length > 0 ? Math.max(...remedios.map(r => r.codigo)) + 1 : 1;
+
+            const novoRemedio = {
+                codigo: novoCodigo,
+                nome_produto: nome,
+                formula: document.getElementById('formula').value.trim(),
+                mg: parseInt(document.getElementById('mg').value) || null,
+                observacoes: document.getElementById('observacoes').value.trim(),
+                valor: parseFloat(document.getElementById('valor').value) || 0
+            };
+
+            remedios.push(novoRemedio);
+            indiceAtual = remedios.length - 1;
+            salvarDados();
+            carregarRegistro(indiceAtual);
+            alert('Remédio adicionado!');
+        }
+
+        function apagarRemedio() {
+            if (indiceAtual < 0) {
+                alert('Use Avançar/Recuar para selecionar um remédio primeiro!');
+                return;
+            }
+
+            const nome = remedios[indiceAtual].nome_produto;
+            if (confirm(`Apagar "${nome}"?`)) {
+                remedios.splice(indiceAtual, 1);
+                if (remedios.length === 0) {
+                    indiceAtual = -1;
+                } else {
+                    indiceAtual = Math.max(0, indiceAtual - 1);
+                }
+                salvarDados();
+                alert('Remédio apagado!');
+            }
+        }
+
+        function avancarRemedio() {
+            if (remedios.length === 0) {
+                alert('Nenhum remédio para navegar!');
+                return;
+            }
+            indiceAtual = (indiceAtual + 1) % remedios.length;
+            carregarRegistro(indiceAtual);
+        }
+
+        function recuarRemedio() {
+            if (remedios.length === 0) {
+                alert('Nenhum remédio para navegar!');
+                return;
+            }
+            indiceAtual = (indiceAtual - 1 + remedios.length) % remedios.length;
+            carregarRegistro(indiceAtual);
+        }
+
+        // Inicialização
+        atualizarStatus();
+    </script>
+</body>
+</html>
